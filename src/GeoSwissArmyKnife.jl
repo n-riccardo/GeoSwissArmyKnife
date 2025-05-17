@@ -13,6 +13,7 @@ using StatsBase
 using LinearAlgebra
 using Printf
 
+include("../MyCPTsCollection/manage_collection.jl")
 include("GMT_computing_profiles.jl")
 include("GMT_fast_plotting.jl")
 include("NetCDFFunctions.jl")

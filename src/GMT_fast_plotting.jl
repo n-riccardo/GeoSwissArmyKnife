@@ -1,7 +1,3 @@
-#using GMT
-
-include("MyCPTsCollection/manage_collection.jl")
-
 """
 plot\\_vector\\_map_S:
 

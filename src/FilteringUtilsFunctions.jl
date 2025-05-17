@@ -847,10 +847,10 @@ function call_velrot(MasterDataset, SlaveDataset, Dtreshold; param_opt="TR",vert
 
     # parm_opt: TRS is translation, rotation and scaling
     
-    SlaveFile=where_my_functions_are*"/Temp/Slave.vel"
-    MasterFile=where_my_functions_are*"/Temp/Master.vel"
+    SlaveFile=where_my_functions_are*"/../temp/Slave.vel"
+    MasterFile=where_my_functions_are*"/../temp/Master.vel"
 
-    write_eq_dist_velrot(where_my_functions_are*"/Temp/link.file", Dtreshold)
+    write_eq_dist_velrot(where_my_functions_are*"/../temp/link.file", Dtreshold)
 
     # Write Master in velrot format
     open(MasterFile, "w") do io
@@ -877,11 +877,11 @@ function call_velrot(MasterDataset, SlaveDataset, Dtreshold; param_opt="TR",vert
     end
 
     # Call velrot that rotates sys1 (slave) into sys2 (master)
-    cd(where_my_functions_are*"/Temp/") do 
+    cd(where_my_functions_are*"/../temp/") do 
         run(`velrot Slave.vel eura Master.vel eura output_velrot.txt eura link.file $vert_weight $param_opt`)
     end
 
-    outVelrotName=where_my_functions_are*"/Temp/output_velrot.txt";
+    outVelrotName=where_my_functions_are*"/../temp/output_velrot.txt";
 
     # Reading section
     # Read the output file
@@ -931,7 +931,7 @@ function call_velrot(MasterDataset, SlaveDataset, Dtreshold; param_opt="TR",vert
         SlaveInMaster[row, :Site] = remove_last_char(SlaveInMaster[row, :Site])
     end
 
-    temp_file = where_my_functions_are*"/Temp/temp_velrot.txt"
+    temp_file = where_my_functions_are*"/../temp/temp_velrot.txt"
 
     copy_and_modify_file(outVelrotName, temp_file, indx_MasterInSlave)
 
