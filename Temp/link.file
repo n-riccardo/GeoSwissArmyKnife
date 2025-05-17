@@ -1,0 +1,2 @@
+# Set the nominal separation of sites to be this distance (m)
+ eq_dist 200.0

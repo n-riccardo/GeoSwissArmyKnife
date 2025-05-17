@@ -1,0 +1,22 @@
+module GeoSwissArmyKnife
+
+using GMT
+using LibGEOS
+using CSV
+using DataFrames
+using DelimitedFiles
+using Distances
+using GeographicLib
+using Ipopt
+using JuMP
+using StatsBase
+using LinearAlgebra
+using Printf
+
+include("GMT_computing_profiles.jl")
+include("GMT_fast_plotting.jl")
+include("NetCDFFunctions.jl")
+include("StrainRateTools.jl")
+include("FilteringUtilsFunctions.jl")
+
+end

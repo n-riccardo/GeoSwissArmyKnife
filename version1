@@ -1,0 +1,142 @@
+function RotateVeloField(MasterDataset, SlaveDataset, Dtreshold; components=3)
+
+    # Find the common sites
+    distanceMatrix=compute_distance_matrix(MasterDataset[:,1],MasterDataset[:,2],SlaveDataset[:,1],SlaveDataset[:,2])
+    cond=(distanceMatrix .< Dtreshold);
+
+    # find rows and columns of the common sites
+    couple_of_indices=Tuple.(findall(!iszero,cond))
+
+    MasterIndices= first.(couple_of_indices)
+    SlaveIndices= last.(couple_of_indices)
+
+    # Construct the design matrix
+    δV=Float64[]
+    R=Matrix{Float64}(undef,0,3)
+    T=Matrix{Float64}(undef,0,2)
+    O=Float64[]
+
+    for i in eachindex(view(cond, :, 1))
+        for j in eachindex(view(cond, 1, :))
+            if cond[i,j]
+
+                lon=MasterDataset[i,1]
+                lat=MasterDataset[i,2]
+                δvE=MasterDataset[i,3]-SlaveDataset[j,3]
+                δvN=MasterDataset[i,4]-SlaveDataset[j,4]
+
+                RE=Earth_Radius* [sind(lon) -cosd(lon) 0];
+                RN=Earth_Radius* [-cosd(lon)*sind(lat) -sind(lon)*sind(lat) cosd(lat)];
+
+                # Horizontal translation
+                Ttemp=[1 0; 0 1]
+                T=vcat(T,Ttemp)
+
+                if(components==3)
+                    δvU=MasterDataset[i,5]-SlaveDataset[j,5]
+                    RU=[0 0 0]
+                    Oij=[0,0,1]
+
+                    R=vcat(R,RE,RN,RU)
+
+                    push!(δV,δvE)
+                    push!(δV,δvN)
+                    push!(δV,δvU)
+
+                    append!(O,Oij)
+                else
+                    R=vcat(R,RE,RN)
+
+                    push!(δV,δvE)
+                    push!(δV,δvN)
+                end
+
+            end
+        end
+    end
+
+    if components==3
+        G=hcat(R,T,O)
+    else
+        G=hcat(R,T)
+    end
+    
+    # Get the parameters through least square solution
+    w = G \ δV
+    
+    # Now rotote Slave into Master
+    vEnew=Float64[]
+    vNnew=Float64[]
+    vUnew=Float64[]
+    vErot=Float64[]
+    vNrot=Float64[]
+    vUrot=Float64[]
+    
+    for i in eachindex(view(SlaveDataset, :, 1))
+        
+        lon=SlaveDataset[i,1]
+        lat=SlaveDataset[i,2]
+
+        vEold=SlaveDataset[i,3]
+        vNold=SlaveDataset[i,4]
+    
+        RE=Earth_Radius* [sind(lon) -cosd(lon) 0];
+        RN=Earth_Radius* [-cosd(lon)*sind(lat) -sind(lon)*sind(lat) cosd(lat)];
+
+        Ttemp=[1 0; 0 1]
+    
+        if(components==3)
+
+            vUold=SlaveDataset[i,5]
+            RU=[0 0 0]
+            O=[0,0,1]
+    
+            R=vcat(RE,RN,RU)
+            Gtemp=hcat(R,Ttemp,O)
+
+            vnewtemp=Gtemp*w + [vEold,vNold,vUold]
+            push!(vEnew,vnewtemp[1])
+            push!(vNnew,vnewtemp[2])
+            push!(vUnew,vnewtemp[3])
+
+            vrottemp=Gtemp*w;
+            push!(vErot,vrottemp[1])
+            push!(vNrot,vrottemp[2])
+            push!(vUrot,vrottemp[3])
+
+        else
+
+            R=vcat(RE,RN)
+            Gtemp=hcat(R,Ttemp)
+
+            vnewtemp=Gtemp*w + [vEold,vNold]
+            push!(vEnew,vnewtemp[1])
+            push!(vNnew,vnewtemp[2])
+
+            vrottemp=Gtemp*w;
+            push!(vErot,vrottemp[1])
+            push!(vNrot,vrottemp[2])
+
+        end
+    
+    end
+
+    if components==3
+        SlaveDataset.vERotated=vEnew
+        SlaveDataset.vnRotated=vNnew
+        SlaveDataset.vuRotated=vUnew
+
+        SlaveDataset.RotVE=vErot
+        SlaveDataset.RotVN=vNrot
+        SlaveDataset.RotVU=vUrot
+    else
+        SlaveDataset.vERotated=vEnew
+        SlaveDataset.vnRotated=vNnew
+
+        SlaveDataset.RotVE=vErot
+        SlaveDataset.RotVN=vNrot
+    end
+
+    return MasterDataset, SlaveDataset, MasterIndices, SlaveIndices
+
+end
