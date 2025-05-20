@@ -94,7 +94,7 @@ function WeightStations(myDataset::DataFrame, thresholdNnb::Real; dispInfo::Bool
                 w_lon_lat_i=tempListWeightsLonLat[i]
                 w_lon_lat_j=tempListWeightsLonLat[j]
 
-                mean_lon = (myDataset.Long[i]*w_lon_lat_i + myDataset.Long[j]*w_lon_lat_j) / (w_lon_lat_i+w_lon_lat_j)
+				mean_lon = mean_longitude(myDataset.Long[i], myDataset.Long[j]; w1=w_lon_lat_i, w2=w_lon_lat_j)
                 mean_lat = (myDataset.Lat[i]*w_lon_lat_i + myDataset.Lat[j]*w_lon_lat_j) / (w_lon_lat_i+w_lon_lat_j)
 
                 if(dispInfo)
@@ -106,7 +106,17 @@ function WeightStations(myDataset::DataFrame, thresholdNnb::Real; dispInfo::Bool
                 end
 
                 # Update the dataset; the name of modified stations is indicated with an "M" at the end of the name
-                myDataset[i,:] = [mean_lon, mean_lat, ve, vn, vu, se, sn, su, 0.0, myDataset.Site[i][1:end-1]*"M"]
+                #myDataset[i,:] = [mean_lon, mean_lat, ve, vn, vu, se, sn, su, 0.0, myDataset.Site[i][1:end-1]*"M"]
+				myDataset.Long[i]=mean_lon;
+				myDataset.Lat[i]=mean_lat;
+				myDataset.E_Rate[i]=ve;
+				myDataset.N_Rate[i]=vn;
+				myDataset.U_Rate[i]=vu;
+				myDataset.σ_E[i]=se;
+				myDataset.σ_N[i]=sn;
+				myDataset.σ_U[i]=su;
+				myDataset.Site[i]=myDataset.Site[i][1:end-1]*"M"
+				
                 deleteat!(myDataset, j)
 
                 # Update the weights of lon and lat for the new station
@@ -1050,4 +1060,62 @@ function combine_velo_field(MasterDataset, SlaveDataset, Dtreshold)
 
     return FinalDataset
 
+end
+
+function wrap_longitude(lon::Real)
+
+    lon_shifted = lon
+	
+    while lon_shifted <= -180
+        lon_shifted += 360
+    end
+	
+    while lon_shifted > 180
+        lon_shifted -= 360
+    end
+	
+    return lon_shifted == -180 ? 180.0 : lon_shifted
+
+end
+
+function make_unique_names(vector)
+    prefix_counts = Dict{String, Int}()
+    result = String[]
+
+    for name in vector
+        prefix = name[1:3]            # first 3 letters
+        key = name[1:4]               # first 4 letters, used to detect duplicates
+
+        count = get!(prefix_counts, key, 0)
+        if count == 0
+            push!(result, name)
+        else
+            new_name = prefix * string(count - 1) * "_GPS"
+            println("Renamed: $name → $new_name")
+            push!(result, new_name)
+        end
+        prefix_counts[key] += 1
+    end
+
+    return result
+end
+
+function mean_longitude(lon1, lon2; w1=1, w2=1)
+
+    lon1_rad = deg2rad(lon1)
+    lon2_rad = deg2rad(lon2)
+
+    x = (cos(lon1_rad)*w1 + cos(lon2_rad)*w2)/(w1+w2)
+    y = (sin(lon1_rad)*w1 + sin(lon2_rad)*w2)/(w1+w2)
+
+    mean_rad = atan(y, x)
+	
+    mean_deg = rad2deg(mean_rad)
+	
+	if(mean_deg == -180)
+		mean_deg=180
+	end
+		
+	return mean_deg
+	
 end
