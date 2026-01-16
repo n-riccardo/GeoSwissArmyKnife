@@ -449,7 +449,7 @@ function percentile_from_cross_sections(my_percentile::Real;path_to_file::String
     end
 
     if(isempty(path_to_file))
-        path_to_file=where_my_functions_are*"/Temp/temp.csv"
+        path_to_file=where_my_functions_are*"/../temp/temp.csv"
         CSV.write(path_to_file,CrossProfileValues,writeheader=false)
     end
 
@@ -546,4 +546,157 @@ function compute_tracks(HalfWidth,start_end_points,num_points_track)
     push!(lat_rect,dataOnTrack[1,2]);
 
     return total_distance,azimuth_,dataOnTrack,distances,lon_rect,lat_rect
+end
+
+function Intersect_track_blocksegments(segments_df,track_matrix,rectangle_matrix)
+
+	rename!(segments_df, [:lon, :lat])
+	
+	# Create the segments vector
+	segments = Vector{Tuple{Tuple{Float64,Float64},Tuple{Float64,Float64}}}()
+	buf = Tuple{Float64,Float64}[]
+	for r in eachrow(segments_df)
+		x, y = Float64(r.lon), Float64(r.lat)
+		if isnan(x) || isnan(y)
+			empty!(buf)
+			continue
+		end
+		push!(buf, (x,y))
+		if length(buf) == 2
+			push!(segments, (buf[1], buf[2]))
+			empty!(buf)
+		end
+	end
+	
+	println("There are ", length(segments), " segments.")
+
+	poly_coords = copy(track_matrix)
+	if poly_coords[1,1] != poly_coords[end,1] || poly_coords[1,2] != poly_coords[end,2]
+		poly_coords = vcat(poly_coords, poly_coords[1:1, :])
+	end
+
+	poly_file_temp = mktemp()[1]
+	open(poly_file_temp, "w") do io
+    
+		for i in 1:size(poly_coords,1)
+			println(io, "$(poly_coords[i,1]) $(poly_coords[i,2])")
+		end
+		
+	end
+	
+	GMTPolyLine=GMT.gmtspatial(poly_file_temp,F="l")# F="l" per linea non chiusa
+
+	poly_coords = copy(rectangle_matrix)
+	
+	if poly_coords[1,1] != poly_coords[end,1] || poly_coords[1,2] != poly_coords[end,2]
+		poly_coords = vcat(poly_coords, poly_coords[1:1, :])
+	end
+
+	poly_file_temp = mktemp()[1]
+	open(poly_file_temp, "w") do io
+	
+		for i in 1:size(poly_coords,1)
+			println(io, "$(poly_coords[i,1]) $(poly_coords[i,2])")
+		end
+		
+	end
+	
+	GMTPoly=GMT.gmtspatial(poly_file_temp,F="")
+
+	LonsPoly=Float64[]
+	LatsPoly=Float64[]
+
+	LonsLine=Float64[]
+	LatsLine=Float64[]
+
+	for (k,(p1,p2)) in enumerate(segments)
+		# Scrivi il segmento k in file temporaneo
+		seg_file = mktemp()[1]
+		open(seg_file, "w") do io
+			println(io, "$(p1[1]) $(p1[2])")
+			println(io, "$(p2[1]) $(p2[2])")
+		end
+
+		GMTSegment=GMT.gmtspatial(seg_file,F="l")
+
+		inter_ds = GMT.gmtspatial(GMTSegment, GMTPolyLine, I="e")
+		if(!isempty(inter_ds))
+			println("intersection found (Line)")
+			println(typeof(float(inter_ds[1])))
+			push!(LonsLine,float(inter_ds[1]))
+			push!(LatsLine,float(inter_ds[3]))
+		end
+    
+		inter_ds = GMT.gmtspatial(GMTSegment, GMTPoly, I="e") 
+		if(!isempty(inter_ds))
+			println("intersection found")
+			println(typeof(float(inter_ds[1])))
+			push!(LonsPoly,float(inter_ds[1]))
+			push!(LatsPoly,float(inter_ds[2]))
+		end
+	end
+	
+	return GMTPolyLine,GMTPoly,LonsPoly,LatsPoly,LonsLine,LatsLine
+
+end
+
+function Intersect_track_parallel_and_meridians(GMTPolyLine,step_lon,step_lat)
+
+	meridians = [((λ, -90.0), (λ, 90.0)) for λ in -180.0:step_lon:180.0]
+	
+	lats = collect(-90.0:step_lat:90.0)
+	valid_lats = filter(φ -> abs(φ) < 90.0, lats)
+
+	parallels1 = [((0.0, φ), (180.0, φ)) for φ in valid_lats]
+	parallels2 = [((180.0, φ), (360.0, φ)) for φ in valid_lats]
+	parallels=vcat(parallels1,parallels2)
+	
+	LonsMeridians=Float64[]
+	LatsMeridians=Float64[]
+
+	for (k,(p1,p2)) in enumerate(meridians)
+		# Scrivi il segmento k in file temporaneo
+		meridian_file = mktemp()[1]
+		open(meridian_file, "w") do io
+			println(io, "$(p1[1]) $(p1[2])")
+			println(io, "$(p2[1]) $(p2[2])")
+		end
+
+		GMTMeridian=GMT.gmtspatial(meridian_file,F="l")
+
+		inter_ds = GMT.gmtspatial(GMTMeridian, GMTPolyLine, I="e") 
+		if(!isempty(inter_ds))
+			println("intersection found (Line)")
+			println(typeof(float(inter_ds[1])))
+			push!(LonsMeridians,float(inter_ds[1]))
+			push!(LatsMeridians,float(inter_ds[3]))
+		end
+    
+	end
+	
+	LonsParallel=Float64[]
+	LatsParallel=Float64[]
+
+	for (k,(p1,p2)) in enumerate(parallels)
+		# Scrivi il segmento k in file temporaneo
+		parallel_file = mktemp()[1]
+		open(parallel_file, "w") do io
+			println(io, "$(p1[1]) $(p1[2])")
+			println(io, "$(p2[1]) $(p2[2])")
+		end
+
+		GMTParallel=GMT.gmtspatial(parallel_file,F="l")
+
+		inter_ds = GMT.gmtspatial(GMTParallel, GMTPolyLine, I="e") 
+		if(!isempty(inter_ds))
+			println("intersection found (Line)")
+			println(typeof(float(inter_ds[1])))
+			push!(LonsParallel,float(inter_ds[1]))
+			push!(LatsParallel,float(inter_ds[3]))
+		end
+    
+	end
+	
+	return LonsParallel,LatsParallel,LonsMeridians,LatsMeridians
+
 end

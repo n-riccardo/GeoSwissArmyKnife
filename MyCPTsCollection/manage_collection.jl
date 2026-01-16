@@ -11,7 +11,8 @@ end
 function getMyCPTPath(cpt_name)
     # Get the path only if the CPT exists
     if cpt_name in getMyCPTsList()
-        return getMyCPTsCollectionPath() * "/" * cpt_name
+         raw_path = joinpath(getMyCPTsCollectionPath(), cpt_name)
+        return "\"$raw_path\""  # Handles possible spaces in path
     else
         print("Your cpt does not exist in path!")
         return nothing
@@ -19,11 +20,11 @@ function getMyCPTPath(cpt_name)
 end
 
 function lookCPTcontent(cpt_name)
-    # Get the path only if the CPT exists
     if cpt_name in getMyCPTsList()
-        return readlines(getMyCPTPath(cpt_name))
+        raw_path = joinpath(getMyCPTsCollectionPath(), cpt_name)
+        return readlines(raw_path)
     else
-        print("Your cpt does not exist in path!")
+        println("Your cpt does not exist in path!")
         return nothing
     end
 end

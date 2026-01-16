@@ -213,6 +213,22 @@ function compute_distance_matrix(lon1,lat1,lon2,lat2)
 
 end
 
+function compute_distances_from_point(lon1,lat1,lonp,latp)
+
+	n_stations=length(lon1)
+
+	distance_vec=zeros(n_stations)
+
+	for i in 1:n_stations
+
+		distance_vec[i]=haversine([lon1[i],lat1[i]], [lonp,latp],  Earth_Radius) #result in km
+
+	end
+
+	return distance_vec
+	
+end
+
 """
     km2deg(distance_km::Float64) -> Float64
 
@@ -589,7 +605,7 @@ function find_suspect_outliers(my_dataset,my_smoothed_datset,use_uncertainties=f
             likelihood=exp(-0.5*(((ve_smoothed_temp-ve_temp))^2+((vn_smoothed_temp-vn_temp))^2))
         end
 
-        log_likelihoods[i]=log10(likelihood)
+        log_likelihoods[i]=log(likelihood)
 
     end
 
@@ -668,7 +684,7 @@ function generate_circles(coords_and_radius; num_points=360)
     return circles
 end
 
-function RemoveByName(my_dataset, namelist)
+function RemoveByName(my_dataset, namelist; case_sensitivity=true)
 
     dim_of_input_data_v = size(my_dataset, 1)
     indices_to_be_cleaned = Int[]
@@ -676,11 +692,18 @@ function RemoveByName(my_dataset, namelist)
 
     for j in 1:length(namelist)
         for i in 1:dim_of_input_data_v
-
-            if my_dataset.Site[i] == namelist[j]
-                push!(indices_to_be_cleaned, i)
-                push!(list_of_found_stat, namelist[j])
-            end
+			
+			if(case_sensitivity)
+				if my_dataset.Site[i] == namelist[j]
+					push!(indices_to_be_cleaned, i)
+					push!(list_of_found_stat, namelist[j])
+				end
+			else
+				if lowercase(my_dataset.Site[i]) == lowercase(namelist[j])
+					push!(indices_to_be_cleaned, i)
+					push!(list_of_found_stat, namelist[j])
+				end
+			end
 
         end
     end
@@ -1078,7 +1101,7 @@ function wrap_longitude(lon::Real)
 
 end
 
-function make_unique_names(vector)
+function make_unique_names(vector) #Should be improved...
     prefix_counts = Dict{String, Int}()
     result = String[]
 
@@ -1118,4 +1141,35 @@ function mean_longitude(lon1, lon2; w1=1, w2=1)
 		
 	return mean_deg
 	
+end
+
+function rectangleForGMT(region,llStep)
+
+	lon1, lon2, lat1, lat2 = region
+
+	# Lati
+	lon_vec = lon1:llStep:lon2
+	lat_vec = lat1:llStep:lat2
+
+	# Costruzione del perimetro (in senso orario)
+	lon = vcat(
+		lon_vec,                      # lato basso (O → E)
+		repeat([lon2], length(lat_vec)-1),  # lato destro (S → N)
+		reverse(lon_vec)[2:end],      # lato alto (E → O)
+		repeat([lon1], length(lat_vec)-1)   # lato sinistro (N → S)
+	)
+
+	lat = vcat(
+		repeat([lat1], length(lon_vec)),     # lato basso
+		lat_vec[2:end],                      # lato destro
+		repeat([lat2], length(lon_vec)-1),   # lato alto
+		reverse(lat_vec)[2:end]              # lato sinistro
+	)
+
+	# Chiudiamo il poligono
+	regionLons = vcat(lon, lon[1])
+	regionLats = vcat(lat, lat[1])
+	
+	return regionLons, regionLats
+
 end

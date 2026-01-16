@@ -52,7 +52,7 @@ function plot_vector_map_S(range_plot::Vector{<:Real}, scale_plot::Real, velo_da
         fill_wedges=color * "@"*transparency, outlines=true, Se=scale_s * "/" * CI,
         arrow=arrow * color)
 
-    text!(x=legend_data[1] + leg_offset[1], y=legend_data[2] + leg_offset[2], text=string(legend_data[3])*"mm/yr", font=leg_font)
+    text!(x=legend_data[1] + leg_offset[1], y=legend_data[2] + leg_offset[2], text=string(legend_data[3])*" mm/yr", font=leg_font)
 
     if(Sr)
         velo!(velo_data1, pen=pen_velo,
@@ -109,9 +109,9 @@ Plot a scalar field, e.g. topography, on a map using GMT.jl. My favorite options
 function plot_fancy_scalar_field(netcdf_path::String, range_plot::Vector{<:Real}, range_cpt::Vector{<:Real};
     Are_you_Overwriting::Bool = false, projection_s::String = "M15c", frame_s::String = "af", pen_coast::String = "0.01c,black",
     cpt_string::String="turbo",
-    colorbar_bool::Bool=true, font_colorbar::String = "11p,Helvetica-Bold,black",  position_colorbar::String="JMR+w10c/0.5c+v+o1c/0c", axis_colorbar::String="af", title_colorbar="z",
+    colorbar_bool::Bool=true, font_colorbar::String = "11p,Helvetica-Bold,black",  position_colorbar::String="JMR+w10c/0.5c+v+o1.5c/0c+e", axis_colorbar::String="af", title_colorbar="z",
     color_water::String="",
-    scale_bool::Bool=true, position_scale::Vector{<:Real}=[12,40], width_scale::Real=50, my_shade::Bool=true)
+    scale_bool::Bool=true, position_scale::Vector{<:Real}=[12,40], width_scale::Real=50, my_shade::Bool=true, interp_::String="n")
 
     if(!Are_you_Overwriting)
         gmtset(MAP_FRAME_TYPE="plain", PROJ_LENGTH_UNIT="c")
@@ -123,7 +123,7 @@ function plot_fancy_scalar_field(netcdf_path::String, range_plot::Vector{<:Real}
     if(my_shade)
         grdimage!(netcdf_path, cmap=cpt, shade=my_shade)
     else
-        grdimage!(netcdf_path, cmap=cpt)
+        grdimage!(netcdf_path, cmap=cpt, interp=interp_,dpi=:i )
     end
 
     if(colorbar_bool)

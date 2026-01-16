@@ -19,5 +19,6 @@ include("GMT_fast_plotting.jl")
 include("NetCDFFunctions.jl")
 include("StrainRateTools.jl")
 include("FilteringUtilsFunctions.jl")
+include("SeismicityTools.jl")
 
 end

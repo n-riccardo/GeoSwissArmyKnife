@@ -17,7 +17,7 @@ Keyword Arguments:
 - value_units: Units of the values variable (default: " ")
 - value_desc: Description of the values variable (default: " ")
 """
-function write_to_netcdf(filename::String, lon::Vector{Float64}, lat::Vector{Float64}, values::Matrix{Float64}; 
+function write_to_netcdf(filename::String, lon::Vector{<:Real}, lat::Vector{<:Real}, values::Matrix{<:Real}; 
                          lon_units::String="degrees_east", lat_units::String="degrees_north", 
                          value_name::String="z", value_units::String=" ", value_desc::String=" ")
 
